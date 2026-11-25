@@ -239,8 +239,15 @@
     .menubar, .tools { display: none; }
     .nav { height: auto; flex-wrap: wrap; }
     .nav a { flex: 1 0 30%; padding: 8px 0; font-size: 14px; }
-    .layout { flex-direction: column; }
-    aside { width: 100%; order: 2; }
+    /* 휴대폰: 메뉴 버튼 + 쿠폰(HOT EVENT)을 채팅창 위에 나란히, 나머지는 아래로 */
+    .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    aside { display: contents; }
+    .pills { grid-column: 1; grid-row: 1; gap: 4px; justify-content: center; }
+    .pill { height: 31px; padding: 0 10px; gap: 6px; font-size: 14px; border-radius: 16px; white-space: nowrap; }
+    .pill svg { width: 16px; height: 16px; }
+    .hot { grid-column: 2; grid-row: 1; align-self: center; }
+    main { grid-column: 1 / -1; grid-row: 2; }
+    .login, .cs, .mascot { grid-column: 1 / -1; }
     .chat-body { flex-direction: column; }
     .members { width: 100%; }
     .members ul { max-height: 90px; display: flex; flex-wrap: wrap; gap: 0 14px; }
