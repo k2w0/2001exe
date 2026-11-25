@@ -131,7 +131,6 @@ export class ChatRoom extends DurableObject {
     const locked = (await this.ctx.storage.get("locked")) || false;
     server.send(JSON.stringify({ type: "welcome", history: history.map(strip), locked }));
 
-    this.broadcast({ type: "system", text: "누군가 입장했습니다.", ts: Date.now() });
     await this.broadcastPresence();
     await this.ensureAlarm();
 
@@ -286,7 +285,6 @@ export class ChatRoom extends DurableObject {
   async leave(ws) {
     const info = this.info(ws);
     try { ws.close(1000, "bye"); } catch {}
-    if (info && !info.banned) this.broadcast({ type: "system", text: "누군가 퇴장했습니다.", ts: Date.now() }, ws);
     await this.broadcastPresence(ws);
   }
 
