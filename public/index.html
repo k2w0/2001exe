@@ -7,6 +7,7 @@
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; }
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   body { background: #3a6ea5; padding: 14px 8px; font: 13px/1.4 "Dotum", "돋움", "Gulim", "굴림", "Malgun Gothic", sans-serif; color: #000; }
   button, input { font: inherit; }
   svg { display: block; }
@@ -153,7 +154,7 @@
   .logbox { border: 1px solid #2a4fae; background: #000; flex: 1; display: flex; flex-direction: column; }
   .notice { text-align: center; padding: 8px 6px; border-bottom: 1px solid #2a4fae; font: 15px "Gulim", "굴림", "DotumChe", monospace; line-height: 1.6; }
   .notice .a { color: #3cff6a; } .notice .b { color: #ff3cc8; }
-  .log { height: 272px; overflow-y: auto; padding: 8px 12px; font: 18px/1.65 "Gulim", "굴림", "DotumChe", monospace; }
+  .log { height: 272px; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 8px 12px; font: 18px/1.65 "Gulim", "굴림", "DotumChe", monospace; }
   .log .m { word-break: break-all; }
   .log .ts { color: #b8b8b8; margin-right: 10px; }
   .log .nk { margin-right: 6px; }
@@ -252,6 +253,9 @@
     .members { width: 100%; }
     .members ul { max-height: 90px; display: flex; flex-wrap: wrap; gap: 0 14px; }
     .log { height: 48vh; font-size: 15px; }
+    /* 아이폰은 글자가 16px보다 작은 입력칸을 누르면 화면을 확대해서 흔들림 → 16px로 */
+    .inputrow input, .coupon input, #adminKey { font-size: 16px; }
+    .members ul { overscroll-behavior: contain; }
     .chat-head h2 { font-size: 17px; }
     .inputrow label { display: none; }
     .footer { flex-wrap: wrap; gap: 8px; }
@@ -664,6 +668,7 @@
 
   /* ───── 채팅 ───── */
   const log = $("log"), msg = $("msg"), send = $("send"), statusEl = $("status");
+  const isTouch = matchMedia("(pointer: coarse)").matches;
   const COLORS = ["#3cff6a", "#2ab8ff", "#b48cff", "#5ab0ff", "#39e6a0", "#7fd0ff", "#ffd23a", "#ff8ad8"];
   let ws = null, retry = 0, banned = false, adminKey = null, isAdmin = false, loading = false, unseen = 0;
   $("newMsg").addEventListener("click", () => { log.scrollTop = log.scrollHeight; });
@@ -724,7 +729,8 @@
           loading = true; d.history.forEach(add); loading = false;
           log.scrollTop = log.scrollHeight; unseen = 0; $("newMsg").hidden = true;
           add({ type: "system", text: "익명으로 입장하셨습니다. 채팅을 칠 때마다 닉네임이 바뀝니다.", ts: Date.now() });
-          send.disabled = false; msg.focus();
+          send.disabled = false;
+          if (!isTouch) msg.focus();   // 휴대폰에서는 자동으로 키보드 안 띄움
           statusEl.textContent = "완료";
           if (adminKey) wsSend({ type: "admin_login", key: adminKey });
           break;
@@ -763,8 +769,11 @@
     const text = msg.value.trim();
     if (!text) return;
     wsSend({ type: "chat", text }); msg.value = "";
+    if (document.activeElement !== msg) msg.focus({ preventScroll: true });
   });
-  document.querySelectorAll("[data-emo]").forEach((b) => b.addEventListener("click", () => { msg.value += b.dataset.emo; msg.focus(); }));
+  document.querySelectorAll("[data-emo]").forEach((b) => b.addEventListener("click", () => { msg.value += b.dataset.emo; if (!isTouch) msg.focus(); }));
+  // 전송 버튼을 눌러도 입력칸 포커스가 안 풀리게 → 키보드가 닫혔다 열리며 화면이 튀는 것 방지
+  ["mousedown", "pointerdown"].forEach((ev) => send.addEventListener(ev, (e) => { if (document.activeElement === msg) e.preventDefault(); }));
 
   /* ───── 관리자 ───── */
   // 주소 끝에 #admin 을 붙여서 접속하면 로그인 창이 뜸 (예: https://사이트주소/#admin)
