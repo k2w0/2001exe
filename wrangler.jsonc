@@ -1,0 +1,23 @@
+{
+  // Cloudflare에 이미 만들어 둔 Worker 이름과 같아야 해요
+  "name": "2001exe",
+  "main": "src/index.js",
+  "compatibility_date": "2025-11-01",
+
+  // public 폴더의 index.html 등을 그대로 사이트 화면으로 보여줌
+  "assets": {
+    "directory": "./public"
+  },
+
+  // 실시간 채팅방 (Durable Object)
+  "durable_objects": {
+    "bindings": [
+      { "name": "CHAT", "class_name": "ChatRoom" }
+    ]
+  },
+
+  // 무료 플랜에서도 쓸 수 있는 SQLite 기반 Durable Object
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["ChatRoom"] }
+  ]
+}
