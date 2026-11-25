@@ -749,10 +749,12 @@
       const nk = document.createElement("span"); nk.className = "nk"; nk.style.color = m.mine ? "#ffe14a" : color(m.nick); nk.textContent = m.nick;
       const tx = document.createElement("span"); tx.className = "tx"; tx.textContent = `: ${m.text}`;
       row.append(nk, tx);
+      // 관리자 모드 버튼: 모든 메시지 [삭제], 관리자 메시지가 아니면 [차단]도
+      const del = document.createElement("button"); del.className = "act"; del.dataset.act = "delete"; del.textContent = "삭제";
+      row.append(del);
       if (!m.admin) {
-        const del = document.createElement("button"); del.className = "act"; del.dataset.act = "delete"; del.textContent = "삭제";
         const ban = document.createElement("button"); ban.className = "act ban"; ban.dataset.act = "ban"; ban.textContent = "차단";
-        row.append(del, ban);
+        row.append(ban);
       }
     }
     log.append(row);
