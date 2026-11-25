@@ -215,7 +215,10 @@
   body.admin .log .act { display: inline-block; }
   .members li.adm { color: #ff5a5a; font-weight: bold; }
   .adminbar { display: flex; align-items: center; gap: 8px; padding: 5px 8px; background: #3a0000; border: 1px solid #f44; color: #fcc; font-size: 13px; }
-  .adminbar[hidden] { display: none; }
+  .adminbar[hidden], .lockbar[hidden] { display: none; }
+  .lockbar { padding: 6px 8px; text-align: center; color: #bff4ff; font: bold 13px "Malgun Gothic", sans-serif;
+    border: 1px solid #7fdcff; background: repeating-linear-gradient(45deg, #08305a 0 10px, #0b3f73 10px 20px); animation: blink2 1.2s steps(1) infinite; }
+  #lockBtn.on { background: #ff5a5a; color: #fff; }
   .adminbar b { color: #ff5a5a; }
   .adminbar span { flex: 1; color: #d99; }
   .adminbar button, .dbtn { padding: 2px 10px; cursor: pointer; background: #d4d0c8; border: 0;
@@ -539,9 +542,11 @@
               </div>
               <div class="adminbar" id="adminBar" hidden>
                 <b>★ 관리자 모드</b><span>메시지 옆 [삭제] [차단] 버튼 사용</span>
+                <button type="button" id="lockBtn">채팅 닫기</button>
                 <button type="button" id="banListBtn">차단 목록 (0)</button>
                 <button type="button" id="adminOut">로그아웃</button>
               </div>
+              <div class="lockbar" id="lockBar" hidden>■ 채팅방 얼음!! ■ 관리자가 채팅을 잠시 닫았습니다. 진정되면 다시 열려요~</div>
               <form class="inputrow" id="form">
                 <label for="msg">메시지 입력 :</label>
                 <input id="msg" maxlength="300" autocomplete="off">
@@ -774,7 +779,16 @@
   // 휴대폰에서는 입력칸을 눌러도 크게 열림
   msg.addEventListener("focus", () => { if (isTouch) openChat(); });
   const COLORS = ["#3cff6a", "#2ab8ff", "#b48cff", "#5ab0ff", "#39e6a0", "#7fd0ff", "#ffd23a", "#ff8ad8"];
-  let ws = null, retry = 0, banned = false, adminKey = null, isAdmin = false, loading = false, unseen = 0;
+  let ws = null, retry = 0, banned = false, adminKey = null, isAdmin = false, loading = false, unseen = 0, locked = false;
+  function applyLock(on) {   // 채팅 잠금 상태를 화면에 반영 (관리자는 계속 입력 가능)
+    locked = on;
+    $("lockBar").hidden = !on;
+    const block = on && !isAdmin;
+    msg.disabled = block || banned; send.disabled = block || banned;
+    msg.placeholder = block ? "채팅방이 얼었어요... 잠시만요 (_ _)" : "";
+    $("lockBtn").textContent = on ? "채팅 열기" : "채팅 닫기";
+    $("lockBtn").classList.toggle("on", on);
+  }
   $("newMsg").addEventListener("click", () => { log.scrollTop = log.scrollHeight; });
   log.addEventListener("scroll", () => {
     if (log.scrollHeight - log.scrollTop - log.clientHeight < 4) { unseen = 0; $("newMsg").hidden = true; }
@@ -835,12 +849,14 @@
           loading = true; d.history.forEach(add); loading = false;
           log.scrollTop = log.scrollHeight; unseen = 0; $("newMsg").hidden = true;
           add({ type: "system", text: "익명으로 입장하셨습니다. 채팅을 칠 때마다 닉네임이 바뀝니다.", ts: Date.now() });
-          send.disabled = false;
-          if (!isTouch) msg.focus();   // 휴대폰에서는 자동으로 키보드 안 띄움
+          send.disabled = false; msg.disabled = false;
+          applyLock(!!d.locked);
+          if (!isTouch && !d.locked) msg.focus();   // 휴대폰에서는 자동으로 키보드 안 띄움
           statusEl.textContent = "완료";
           if (adminKey) wsSend({ type: "admin_login", key: adminKey });
           break;
         case "presence": presence(d); break;
+        case "lock": applyLock(d.on); break;
         case "delete":
           d.ids.forEach((id) => log.querySelector(`.m[data-id="${CSS.escape(id)}"]`)?.remove());
           break;
@@ -852,7 +868,7 @@
         case "admin_ok":
           isAdmin = true; document.body.classList.add("admin");
           $("adminBar").hidden = false; $("adminDlg").classList.remove("show");
-          renderBans(d.bans);
+          renderBans(d.bans); applyLock(locked);
           break;
         case "admin_fail":
           adminKey = null; $("adminErr").textContent = d.text;
@@ -892,6 +908,7 @@
     wsSend({ type: "admin_login", key: adminKey });
   });
   $("adminCancel").addEventListener("click", () => $("adminDlg").classList.remove("show"));
+  $("lockBtn").addEventListener("click", () => wsSend({ type: "lock", on: !locked }));
   $("adminOut").addEventListener("click", () => { location.hash = ""; location.reload(); });
 
   log.addEventListener("click", (e) => {

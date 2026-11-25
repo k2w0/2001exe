@@ -106,7 +106,8 @@ export class ChatRoom extends DurableObject {
     server.serializeAttachment({ nick: randomNick(), h, last: 0, admin: false, tries: 0 });
 
     const history = (await this.ctx.storage.get("history")) || [];
-    server.send(JSON.stringify({ type: "welcome", history: history.map(strip) }));
+    const locked = (await this.ctx.storage.get("locked")) || false;
+    server.send(JSON.stringify({ type: "welcome", history: history.map(strip), locked }));
 
     this.broadcast({ type: "system", text: "누군가 입장했습니다.", ts: Date.now() });
     await this.broadcastPresence();
@@ -127,6 +128,7 @@ export class ChatRoom extends DurableObject {
       case "delete": return info.admin && this.onDelete(data);
       case "ban": return info.admin && this.onBan(ws, info, data);
       case "unban": return info.admin && this.onUnban(ws, data);
+      case "lock": return info.admin && this.onLock(!!data.on);
     }
   }
 
@@ -136,6 +138,10 @@ export class ChatRoom extends DurableObject {
     if (!text) return;
 
     const now = Date.now();
+    if (!info.admin && (await this.ctx.storage.get("locked"))) {
+      ws.send(JSON.stringify({ type: "system", text: "지금은 채팅방이 얼어 있어요. 관리자가 풀 때까지 기다려 주세요 (_ _)", ts: now }));
+      return;
+    }
     if (now - info.last < COOLDOWN_MS) {
       ws.send(JSON.stringify({ type: "system", text: "너무 빨라요! 잠시 후 다시 입력하세요.", ts: now }));
       return;
@@ -210,6 +216,15 @@ export class ChatRoom extends DurableObject {
     this.broadcast({ type: "system", text: "관리자에 의해 한 명이 차단되었습니다.", ts: Date.now() });
     await this.sendBans();
     await this.broadcastPresence();
+  }
+
+  // 채팅 잠금(얼리기): 관리자만 말할 수 있음
+  async onLock(on) {
+    await this.ctx.storage.put("locked", on);
+    this.broadcast({ type: "lock", on });
+    this.broadcast({ type: "system", ts: Date.now(), text: on
+      ? "분위기가 과열되어 관리자가 채팅방을 잠시 얼렸습니다. 진정하시고 잠시만 기다려 주세요 -_-;;"
+      : "채팅방이 다시 열렸습니다! 사이좋게 대화합시다~ ^^*" });
   }
 
   async onUnban(ws, data) {
