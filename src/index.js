@@ -4,7 +4,9 @@ const MAX_HISTORY = 100;   // 저장할 최근 메시지 수
 const MAX_LEN = 300;       // 메시지 최대 글자 수
 const COOLDOWN_MS = 700;   // 도배 방지 간격
 const ADMIN_NICK = "★관리자★";
-const GHOST_SLOTS = 32;    // 유령 접속자 후보 수 (평균 절반 정도가 접속 중으로 보임)
+const GHOST_SLOTS = 140;   // 유령 접속자 후보 수
+const GHOST_MIN = 50;      // 유령 접속자 최소 (대략)
+const GHOST_MAX = 100;     // 유령 접속자 최대 (대략)
 const PRESENCE_TICK = 45000; // 유령 접속자 목록 갱신 주기
 
 const WORDS = [
@@ -35,16 +37,27 @@ function seeded(seed) {
   };
 }
 
-// 유령 접속자: 각자 몇 분씩 들어왔다 나갔다 하는 가짜 닉네임
+// 전체 붐비는 정도 (0~1): 15분마다 새 목표값, 그 사이는 부드럽게 이어짐
+function crowdLevel(now) {
+  const B = 15 * 60000, k = Math.floor(now / B), t = (now % B) / B;
+  const a = seeded(k * 7919 + 1)(), b = seeded((k + 1) * 7919 + 1)();
+  const sm = t * t * (3 - 2 * t);
+  return a + (b - a) * sm;
+}
+
+// 유령 접속자: 각자 몇 분씩 들어왔다 나갔다 하는 가짜 닉네임 (저장 안 함, 매번 계산)
 function ghosts() {
   const now = Date.now(), out = [];
+  const p = (GHOST_MIN + (GHOST_MAX - GHOST_MIN) * crowdLevel(now)) / GHOST_SLOTS;
+  const off = [];
   for (let i = 0; i < GHOST_SLOTS; i++) {
-    const period = (3 + ((i * 7) % 9)) * 60000;
+    const period = (5 + ((i * 7) % 16)) * 60000;   // 각자 5~20분마다 들어왔다/나갔다
     const k = Math.floor((now + i * 37117) / period);
     const r = seeded(i * 1000003 + k);
-    if (r() < 0.55) out.push(nickFrom(r));
+    (r() < p ? out : off).push(nickFrom(r));
   }
-  return out;
+  while (out.length < GHOST_MIN && off.length) out.push(off.shift());   // 범위 보정
+  return out.slice(0, GHOST_MAX);
 }
 
 function sortKey(s) {
