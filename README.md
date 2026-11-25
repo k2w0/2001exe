@@ -56,3 +56,6 @@ npm run deploy
   예) https://2001exe.내계정.workers.dev/#admin
 - 메시지 옆 [삭제] = 그 메시지만 지움 / [차단] = 그 사람 IP 차단 + 그 사람 메시지 전부 삭제 + 즉시 강퇴
 - 차단 해제: 관리자 모드의 "차단 목록" 버튼
+
+## 자동 배포
+GitHub `main` 브랜치에 올라가면 Cloudflare Workers가 자동으로 다시 배포합니다.
